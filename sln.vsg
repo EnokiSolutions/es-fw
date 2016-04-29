@@ -1,6 +1,7 @@
 {
   "name": "Es.Fw",
   "packages":[
-    ["NUnit","2.6.4"]
+    ["NUnit","2.6.4"],
+    ["Es.FwI","0.1.0","net45"],
   ]
 }
