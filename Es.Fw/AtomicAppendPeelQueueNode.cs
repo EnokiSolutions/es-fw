@@ -4,7 +4,7 @@ namespace Es.Fw
     // Also strictly for a performance case.
     public abstract class AtomicAppendPeelQueueNode
     {
-        public AtomicAppendPeelQueueNode Next = null;
+        public AtomicAppendPeelQueueNode Next;
 
         public static void Push<T>(ref T head, ref T tail, T data) where T: AtomicAppendPeelQueueNode
         {

@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+// ReSharper disable MemberCanBePrivate.Global
 
 namespace Es.Fw
 {

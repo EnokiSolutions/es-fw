@@ -1,4 +1,5 @@
 #define HASH_PACKETS
+// ReSharper disable MemberCanBePrivate.Global
 
 using System;
 using System.Diagnostics;
@@ -596,12 +597,11 @@ namespace Es.Fw
             Reset(byteBuffer);
         }
 
-        private static readonly DateTime Epoc = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).ToUniversalTime();
-        private static readonly DateTime EpocLocal = new DateTime(1970, 1, 1, 0, 0, 0);
+        private static readonly DateTime EpochLocal = new DateTime(1970, 1, 1, 0, 0, 0);
 
         // Because: Time Zones
-        private static readonly double MaxDelta = DateTime.MaxValue.Subtract(EpocLocal.AddDays(1)).TotalMilliseconds;
-        private static readonly double MinDelta = DateTime.MinValue.Subtract(EpocLocal.AddDays(-1)).TotalMilliseconds;
+        private static readonly double MaxDelta = DateTime.MaxValue.Subtract(EpochLocal.AddDays(1)).TotalMilliseconds;
+        private static readonly double MinDelta = DateTime.MinValue.Subtract(EpochLocal.AddDays(-1)).TotalMilliseconds;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void WriteDateTime(ByteBuffer bb, DateTime dt)

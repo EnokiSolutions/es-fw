@@ -11,10 +11,10 @@ namespace Es.Fw
         public static readonly IUtcDateTimeProvider UtcDateTimeProvider;
 
         internal static readonly IRandomFactory SystemRandomFactory;
-        internal static IRandomWithSeedFactory SystemRandomWithSeedFactory;
+        internal static readonly IRandomWithSeedFactory SystemRandomWithSeedFactory;
 
         internal static readonly IRandomFactory XorShift1024RandomFactory;
-        internal static IRandomWithSeedFactory XorShift1024RandomWithSeedFactory;
+        internal static readonly IRandomWithSeedFactory XorShift1024RandomWithSeedFactory;
 
         public static IEncrypt CreateEncrypt(byte[] key, IRandom random) { return new Blowfish(key, random); }
         public static IDecrypt CreateDecrypt(byte[] key) { return new Blowfish(key); }

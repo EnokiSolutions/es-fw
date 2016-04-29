@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using Es.FwI;
 using NUnit.Framework;
+// ReSharper disable MemberCanBePrivate.Local
 
 namespace Es.Fw.Test
 {
@@ -11,7 +12,7 @@ namespace Es.Fw.Test
     {
         private sealed class MockRandom : IRandom
         {
-            private int x;
+            private int _x;
 
             public int FillCalled { get; private set; }
 
@@ -20,15 +21,15 @@ namespace Es.Fw.Test
             public void Fill(ArraySegment<byte> toFill)
             {
                 for (var i = 0; i < toFill.Count; ++i)
-                    toFill.Array[toFill.Offset + i] = (byte) ++x;
+                    toFill.Array[toFill.Offset + i] = (byte) ++_x;
                 ++FillCalled;
             }
 
             public ulong Ulong()
             {
-                ++x;
+                ++_x;
                 ++UlongCalled;
-                return (uint) x;
+                return (uint) _x;
             }
         }
 
@@ -124,7 +125,7 @@ namespace Es.Fw.Test
                     var inas = new ArraySegment<byte>(input);
                     var enInfo = en.Analyze(inas);
                     var out1As = new ArraySegment<byte>(out1, 0, enInfo.EncryptedMaxSize);
-                    var enCount1 = en.Encrypt(inas, out1As, enInfo);
+                    en.Encrypt(inas, out1As, enInfo);
                 });
             }
         }
