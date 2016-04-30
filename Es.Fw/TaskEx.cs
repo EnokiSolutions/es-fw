@@ -1,7 +1,9 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 
 namespace Es.Fw
 {
+    [ExcludeFromCodeCoverage]
     public static class TaskEx
     {
         public static readonly Task Done = Task.Run(()=> {});
