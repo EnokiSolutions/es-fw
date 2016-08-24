@@ -79,11 +79,8 @@ namespace Es.Fw
 
             internal static int[] ReadHeader(byte[] data, int offset)
             {
-                Contract.Requires(data != null);
-                Contract.Requires(offset >= 0 && offset < data.Length);
                 // ReSharper disable once RedundantAssignment
                 var result = Contract.Result<int[]>();
-                Contract.Ensures(result != null && result.Length == 2);
 
                 int sum = 0, currentShift = 0;
                 while ((data[offset] & bitMask) != 0)

@@ -26,12 +26,12 @@ namespace Es.Fw
             ByteBuffer.WriteUlong(bb, _k0);
             ByteBuffer.WriteBytes(bb, payload);
             ByteBuffer.WriteUlong(bb, _k1);
-            ByteBuffer.Commit(bb);
+            ByteBuffer.WriteCommitPosition(bb);
 
             var hash = bb.Bytes.XxHash(bb.ReadPosition, bb.Count);
             ByteBuffer.Reset(bb);
             ByteBuffer.WriteUlong(bb, hash);
-            ByteBuffer.Commit(bb);
+            ByteBuffer.WriteCommitPosition(bb);
 
             return bb.Bytes.Take(8).ToArray();
         }

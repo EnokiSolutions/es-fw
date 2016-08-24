@@ -8,7 +8,7 @@ namespace Es.Fw
     {
         // Normally I'd disallow the use of a thread static, but since selecting a seed to create a new random generator
         // presents a problem (using time isn't a good idea since several generators may be requested at the same time)
-        // The use of a thread static sacrifics some performance to avoid the programs with seed generation.
+        // The use of a thread static sacrifics some performance to avoid the problems with seed generation.
         [ThreadStatic] private static Random _commonRandom;
         private readonly byte[] _bytes;
 

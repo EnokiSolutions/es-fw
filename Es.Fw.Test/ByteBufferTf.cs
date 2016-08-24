@@ -37,13 +37,13 @@ namespace Es.Fw.Test
                 ByteBuffer.WriteUint(bb, 33);
                 ByteBuffer.WriteUlong(bb, 0xFDECBA9876543210L);
                 ByteBuffer.WriteInt(bb, 0); // not read by reader
-                ByteBuffer.EndWritePacket(bb, startingPos);
+                ByteBuffer.EndWritePacket(bb, startingPos, 0);
             }
 
             public bool TryRead(ByteBuffer bb)
             {
                 int endPos;
-                if (!ByteBuffer.StartTryReadPacket(bb, out endPos))
+                if (!ByteBuffer.StartTryReadPacket(bb, out endPos, 0))
                     return false;
 
                 ByteBuffer.ReadUlong(bb);
@@ -64,7 +64,7 @@ namespace Es.Fw.Test
             Assert.Throws<Exception>(() => { ByteBuffer.WriteObject(bb, new NotImplementedException()); });
 
             ByteBuffer.WriteObject(bb, true);
-            ByteBuffer.Commit(bb);
+            ByteBuffer.WriteCommit(bb);
             bb.Bytes[0] = ByteBuffer.TypeId.Reserved;
             Assert.Throws<Exception>(() => { ByteBuffer.ReadObject(bb); });
 
@@ -103,15 +103,15 @@ namespace Es.Fw.Test
                 ByteBuffer.WriteString(bb, null);
                 ByteBuffer.WriteUlong(bb, 0xFDECBA9876543210L);
                 ByteBuffer.WriteInt(bb, 0); // not read by reader
-                ByteBuffer.EndWritePacket(bb, startingPos);
+                ByteBuffer.EndWritePacket(bb, startingPos, 0);
 
                 var startingPos1 = ByteBuffer.StartWritePacket(bb);
                 ByteBuffer.WriteInt(bb, 55);
-                ByteBuffer.EndWritePacket(bb, startingPos1);
+                ByteBuffer.EndWritePacket(bb, startingPos1, 0);
 
-                Assert.IsFalse(ByteBuffer.TryReadPacket(bb, r => { }));
+                Assert.IsFalse(ByteBuffer.TryReadPacket(bb, r => { }, 0));
 
-                ByteBuffer.Commit(bb);
+                ByteBuffer.WriteCommit(bb);
 
                 Assert.IsTrue(ByteBuffer.TryReadPacket(bb, r =>
                 {
@@ -133,21 +133,22 @@ namespace Es.Fw.Test
                     Assert.AreEqual(thisIsATest, readString);
                     Assert.IsNull(ByteBuffer.ReadString(r));
                     Assert.AreEqual(0xFDECBA9876543210L, ByteBuffer.ReadUlong(r));
-                }));
+                }, 
+                0));
 
                 var rp = bb.ReadPosition;
                 Assert.Greater(rp, 0);
-                ByteBuffer.Shift(bb);
-                Assert.Greater(bb.WriteCommit, 0);
+                ByteBuffer.ReadCommit(bb);
+                Assert.Greater(bb.WriteCommitPosition, 0);
                 Assert.AreEqual(0, bb.ReadPosition);
-                ByteBuffer.Shift(bb);
+                ByteBuffer.ReadCommit(bb);
 
-                Assert.IsTrue(ByteBuffer.TryReadPacket(bb, r => { Assert.AreEqual(55, ByteBuffer.ReadInt(r)); }));
+                Assert.IsTrue(ByteBuffer.TryReadPacket(bb, r => { Assert.AreEqual(55, ByteBuffer.ReadInt(r)); }, 0));
 
-                ByteBuffer.Shift(bb);
+                ByteBuffer.ReadCommit(bb);
                 Assert.AreEqual(0, bb.ReadPosition);
                 Assert.AreEqual(0, bb.WritePosition);
-                Assert.AreEqual(0, bb.WriteCommit);
+                Assert.AreEqual(0, bb.WriteCommitPosition);
 
                 var x = ByteBuffer.StartWritePacket(bb);
                 ByteBuffer.WriteUlong(bb, 0xddddccccbbbbaaaaL);
@@ -156,10 +157,10 @@ namespace Es.Fw.Test
                 ByteBuffer.WriteUint(bb, 33);
                 ByteBuffer.WriteUlong(bb, 0xFDECBA9876543210L);
                 ByteBuffer.WriteInt(bb, 0); // not read by reader
-                ByteBuffer.EndWritePacket(bb, x);
-                ByteBuffer.Commit(bb);
+                ByteBuffer.EndWritePacket(bb, x, 0);
+                ByteBuffer.WriteCommit(bb);
                 int ep;
-                ByteBuffer.StartTryReadPacket(bb, out ep);
+                ByteBuffer.StartTryReadPacket(bb, out ep, 0);
                 Assert.AreEqual(0xddddccccbbbbaaaaL, ByteBuffer.ReadUlong(bb));
                 Assert.AreEqual(thisIsATest, ByteBuffer.ReadString(bb));
                 Assert.AreEqual(45, ByteBuffer.ReadInt(bb));
@@ -167,10 +168,10 @@ namespace Es.Fw.Test
                 Assert.AreEqual(0xFDECBA9876543210L, ByteBuffer.ReadUlong(bb));
                 ByteBuffer.EndReadPacket(bb, ep);
 
-                ByteBuffer.Shift(bb);
+                ByteBuffer.ReadCommit(bb);
                 Assert.AreEqual(0, bb.ReadPosition);
                 Assert.AreEqual(0, bb.WritePosition);
-                Assert.AreEqual(0, bb.WriteCommit);
+                Assert.AreEqual(0, bb.WriteCommitPosition);
             }
         }
 
@@ -182,46 +183,44 @@ namespace Es.Fw.Test
 
             var startingPos = ByteBuffer.StartWritePacket(bb1);
             ByteBuffer.WriteUlong(bb1, 0xddddccccbbbbaaaaL);
-            ByteBuffer.EndWritePacket(bb1, startingPos);
+            ByteBuffer.EndWritePacket(bb1, startingPos, 0);
 
-            ByteBuffer.Commit(bb1);
+            ByteBuffer.WriteCommit(bb1);
 
             var startingPos1 = ByteBuffer.StartWritePacket(bb2);
             ByteBuffer.WriteLong(bb2, 0x1d3d3cccb3bba3aaL);
-            ByteBuffer.EndWritePacket(bb2, startingPos1);
+            ByteBuffer.EndWritePacket(bb2, startingPos1, 0);
 
-            ByteBuffer.Commit(bb2);
+            ByteBuffer.WriteCommit(bb2);
 
             ByteBuffer.Append(bb1, bb2);
 
-            ByteBuffer.Commit(bb1);
+            ByteBuffer.WriteCommit(bb1);
 
-            Assert.AreEqual(ByteBuffer.AntiCorruptionEnabled ? 40 : 24, bb1.Count);
+            Assert.AreEqual(40, bb1.Count);
 
-            ByteBuffer.TryReadPacket(bb1, bb => { Assert.AreEqual(0xddddccccbbbbaaaaL, ByteBuffer.ReadUlong(bb)); });
-            ByteBuffer.TryReadPacket(bb1, bb => { Assert.AreEqual(0x1d3d3cccb3bba3aaL, ByteBuffer.ReadLong(bb)); });
+            ByteBuffer.TryReadPacket(bb1, bb => { Assert.AreEqual(0xddddccccbbbbaaaaL, ByteBuffer.ReadUlong(bb)); }, 0);
+            ByteBuffer.TryReadPacket(bb1, bb => { Assert.AreEqual(0x1d3d3cccb3bba3aaL, ByteBuffer.ReadLong(bb)); }, 0);
         }
 
         [Test]
         public void TestCorruptPacketDetection()
         {
-            if (!ByteBuffer.AntiCorruptionEnabled)
-                return;
-
             var bb = new ByteBuffer(16);
 
             var startingPos = ByteBuffer.StartWritePacket(bb);
             ByteBuffer.WriteUlong(bb, 0xddddccccbbbbaaaaL);
             ByteBuffer.WriteBool(bb, true);
-            ByteBuffer.EndWritePacket(bb, startingPos);
+            ByteBuffer.EndWritePacket(bb, startingPos, 0);
 
-            ByteBuffer.Commit(bb);
+            ByteBuffer.WriteCommit(bb);
 
             bb.Bytes[6] ^= 1;
 
             Assert.Throws<Exception>(
                 () => ByteBuffer.TryReadPacket(bb,
-                    r => { Assert.AreEqual(0xddddccccbbbbaaaaL, ByteBuffer.ReadUlong(r)); }
+                    r => { Assert.AreEqual(0xddddccccbbbbaaaaL, ByteBuffer.ReadUlong(r)); },
+                    0
                     )
                 );
         }
@@ -233,15 +232,16 @@ namespace Es.Fw.Test
 
             var startingPos = ByteBuffer.StartWritePacket(bb);
             ByteBuffer.WriteUlong(bb, 0xddddccccbbbbaaaaL);
-            ByteBuffer.EndWritePacket(bb, startingPos);
+            ByteBuffer.EndWritePacket(bb, startingPos, 0);
 
-            ByteBuffer.Commit(bb);
+            ByteBuffer.WriteCommit(bb);
 
             bb.Bytes[0] ^= 1;
 
             Assert.Throws<Exception>(
                 () => ByteBuffer.TryReadPacket(bb,
-                    r => { Assert.AreEqual(0xddddccccbbbbaaaaL, ByteBuffer.ReadUlong(r)); }
+                    r => { Assert.AreEqual(0xddddccccbbbbaaaaL, ByteBuffer.ReadUlong(r)); },
+                    0
                     )
                 );
         }
@@ -265,26 +265,26 @@ namespace Es.Fw.Test
             ByteBuffer.WriteUint(bb, 33);
             ByteBuffer.WriteUlong(bb, 0xFDECBA9876543210L);
             ByteBuffer.WriteInt(bb, 0); // not read by reader
-            ByteBuffer.EndWritePacket(bb, startingPos);
-            ByteBuffer.Commit(bb);
-            ByteBuffer.Shift(bb);
+            ByteBuffer.EndWritePacket(bb, startingPos, 0);
+            ByteBuffer.WriteCommit(bb);
+            ByteBuffer.ReadCommit(bb);
 
-            bb.WriteCommit -= 1;
+            bb.WriteCommitPosition -= 1;
 
-            Assert.IsFalse(ByteBuffer.TryReadPacket(bb, r => { }));
-            ByteBuffer.Shift(bb);
+            Assert.IsFalse(ByteBuffer.TryReadPacket(bb, r => { }, 0));
+            ByteBuffer.ReadCommit(bb);
 
             Assert.AreEqual(0, bb.ReadPosition);
             Assert.AreNotEqual(0, bb.WritePosition);
-            Assert.AreNotEqual(0, bb.WriteCommit);
+            Assert.AreNotEqual(0, bb.WriteCommitPosition);
 
-            bb.WriteCommit = bb.WritePosition;
-            Assert.IsTrue(ByteBuffer.TryReadPacket(bb, r => { }));
+            bb.WriteCommitPosition = bb.WritePosition;
+            Assert.IsTrue(ByteBuffer.TryReadPacket(bb, r => { }, 0));
 
-            ByteBuffer.Shift(bb);
+            ByteBuffer.ReadCommit(bb);
             Assert.AreEqual(0, bb.ReadPosition);
             Assert.AreEqual(0, bb.WritePosition);
-            Assert.AreEqual(0, bb.WriteCommit);
+            Assert.AreEqual(0, bb.WriteCommitPosition);
         }
 
         [Test]
@@ -335,7 +335,7 @@ namespace Es.Fw.Test
             var dateTime = new DateTime(2000,1,1);
             ByteBuffer.WriteObject(bb, dateTime);
 
-            ByteBuffer.Commit(bb);
+            ByteBuffer.WriteCommit(bb);
 
             Assert.IsNull(ByteBuffer.ReadObject(bb));
             Assert.AreEqual("string", ByteBuffer.ReadObject(bb));
@@ -393,7 +393,7 @@ namespace Es.Fw.Test
                     var startingPos = ByteBuffer.StartWritePacket(bb);
                     for (ulong i = 0; i < 1024*1024/8 + 1; ++i)
                         ByteBuffer.WriteUlong(bb, i);
-                    ByteBuffer.EndWritePacket(bb, startingPos);
+                    ByteBuffer.EndWritePacket(bb, startingPos, 0);
                 });
         }
 
@@ -425,10 +425,10 @@ namespace Es.Fw.Test
                         ByteBuffer.WriteUint(bb, 33);
                         ByteBuffer.WriteUlong(bb, 0xFDECBA9876543210L);
                         ByteBuffer.WriteInt(bb, 0); // not read by reader
-                        ByteBuffer.EndWritePacket(bb, x);
-                        ByteBuffer.Commit(bb);
+                        ByteBuffer.EndWritePacket(bb, x, 0);
+                        ByteBuffer.WriteCommit(bb);
                         int ep;
-                        ByteBuffer.StartTryReadPacket(bb, out ep);
+                        ByteBuffer.StartTryReadPacket(bb, out ep, 0);
                         ByteBuffer.ReadUlong(bb);
                         ByteBuffer.ReadString(bb);
                         ByteBuffer.ReadInt(bb);
@@ -446,7 +446,7 @@ namespace Es.Fw.Test
                     for (var i = 0; i < 10000; ++i)
                     {
                         vrbb.Write(bb);
-                        ByteBuffer.Commit(bb);
+                        ByteBuffer.WriteCommit(bb);
                         vrbb.TryRead(bb);
                         ByteBuffer.Reset(bb);
                     }
@@ -467,31 +467,51 @@ namespace Es.Fw.Test
             var s = new string('x', 1024);
             var startingPos = ByteBuffer.StartWritePacket(bb);
             ByteBuffer.WriteString(bb, s);
-            ByteBuffer.EndWritePacket(bb, startingPos);
+            ByteBuffer.EndWritePacket(bb, startingPos, 0);
             var startingPos1 = ByteBuffer.StartWritePacket(bb);
             ByteBuffer.WriteUlong(bb, 1);
-            ByteBuffer.EndWritePacket(bb, startingPos1);
+            ByteBuffer.EndWritePacket(bb, startingPos1, 0);
             var startingPos2 = ByteBuffer.StartWritePacket(bb);
             ByteBuffer.WriteString(bb, s);
-            ByteBuffer.EndWritePacket(bb, startingPos2);
+            ByteBuffer.EndWritePacket(bb, startingPos2, 0);
             var startingPos3 = ByteBuffer.StartWritePacket(bb);
             ByteBuffer.WriteUlong(bb, 2);
-            ByteBuffer.EndWritePacket(bb, startingPos3);
-            ByteBuffer.Commit(bb);
-            ByteBuffer.TryReadPacket(bb, r => { Assert.AreEqual(s, ByteBuffer.ReadString(r)); });
-            ByteBuffer.TryReadPacket(bb, r => { Assert.AreEqual(1, ByteBuffer.ReadUlong(r)); });
-            ByteBuffer.Shift(bb);
+            ByteBuffer.EndWritePacket(bb, startingPos3, 0);
+            ByteBuffer.WriteCommit(bb);
+            ByteBuffer.TryReadPacket(bb, r => { Assert.AreEqual(s, ByteBuffer.ReadString(r)); }, 0);
+            ByteBuffer.TryReadPacket(bb, r => { Assert.AreEqual(1, ByteBuffer.ReadUlong(r)); }, 0);
+            ByteBuffer.ReadCommit(bb);
             Assert.AreNotEqual(0, bb.ReadPosition);
-            ByteBuffer.TryReadPacket(bb, r => { Assert.AreEqual(s, ByteBuffer.ReadString(r)); });
+            ByteBuffer.TryReadPacket(bb, r => { Assert.AreEqual(s, ByteBuffer.ReadString(r)); }, 0);
             var startingPos4 = ByteBuffer.StartWritePacket(bb);
             ByteBuffer.WriteUlong(bb, 3);
-            ByteBuffer.EndWritePacket(bb, startingPos4);
-            ByteBuffer.Commit(bb);
-            ByteBuffer.TryReadPacket(bb, r => { Assert.AreEqual(2, ByteBuffer.ReadUlong(r)); });
+            ByteBuffer.EndWritePacket(bb, startingPos4, 0);
+            ByteBuffer.WriteCommit(bb);
+            ByteBuffer.TryReadPacket(bb, r => { Assert.AreEqual(2, ByteBuffer.ReadUlong(r)); }, 0);
             Assert.AreNotEqual(0, bb.ReadPosition);
-            ByteBuffer.TryReadPacket(bb, r => { Assert.AreEqual(3, ByteBuffer.ReadUlong(r)); });
-            ByteBuffer.Shift(bb);
+            ByteBuffer.TryReadPacket(bb, r => { Assert.AreEqual(3, ByteBuffer.ReadUlong(r)); }, 0);
+            ByteBuffer.ReadCommit(bb);
             Assert.AreEqual(0, bb.ReadPosition);
+        }
+
+        [Test]
+        public void TestPacketHasMore()
+        {
+            var bb = new ByteBuffer(1024);
+            var sp = ByteBuffer.StartWritePacket(bb);
+            ByteBuffer.WriteInt(bb, 1);
+            ByteBuffer.WriteInt(bb, 2);
+            ByteBuffer.EndWritePacket(bb,sp, 0);
+            ByteBuffer.WriteCommit(bb);
+
+            int ep;
+            Assert.IsTrue(ByteBuffer.StartTryReadPacket(bb, out ep, 0));
+            Assert.IsTrue(ByteBuffer.PacketHasMore(bb, ep));
+            Assert.AreEqual(1, ByteBuffer.ReadInt(bb));
+            Assert.IsTrue(ByteBuffer.PacketHasMore(bb, ep));
+            Assert.AreEqual(2, ByteBuffer.ReadInt(bb));
+            Assert.IsFalse(ByteBuffer.PacketHasMore(bb, ep));
+            ByteBuffer.EndReadPacket(bb,ep);
         }
     }
 }

@@ -26,6 +26,7 @@ namespace Es.Fw.Test
 
             DateTime? dtn = null;
             Assert.IsNull(dtn.AsUtc());
+            Assert.AreNotEqual(dtlc.Ticks,dtu.Ticks);
         }
     }
 }

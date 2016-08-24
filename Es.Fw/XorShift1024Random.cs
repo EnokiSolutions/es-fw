@@ -10,56 +10,81 @@ namespace Es.Fw
     // based on http://xorshift.di.unimi.it/xorshift1024star.c
     internal sealed unsafe class XorShift1024Random : IRandom
     {
+        [ThreadStatic]
+        private static XorShift1024RandomState _threadSpecificRandomState;
+
+        private static XorShift1024RandomState ThreadSpecificRandomState => _threadSpecificRandomState ?? (_threadSpecificRandomState = new XorShift1024RandomState());
         private static readonly IRandom SystemRandomForSeeds = Default.SystemRandomFactory.Create();
-        private readonly ulong[] _s;
-        private int _p;
+
+        private XorShift1024RandomState _state;
 
         public XorShift1024Random()
         {
-            _s = new ulong[16];
-
-            for (var i = 0; i < _s.Length; ++i)
-                _s[i] = SystemRandomForSeeds.Ulong();
+            _state = null;
         }
 
         public XorShift1024Random(int seed)
         {
-            _s = new ulong[16];
+            _state = new XorShift1024RandomState(seed);
+        }
 
-            unchecked
+        private sealed class XorShift1024RandomState
+        {
+            public readonly ulong[] S;
+            public int P;
+
+            public XorShift1024RandomState()
             {
-                var s = (ulong) seed;
+                S = new ulong[16];
 
-                if (s == 0)
-                    s = 0x85cc55cc5c5c5c5eUL;
+                var systemRandomForSeeds = SystemRandomForSeeds;
+                for (var i = 0; i < S.Length; ++i)
+                {
+                    S[i] = systemRandomForSeeds.Ulong();
+                }
+            }
 
-                var i = 0;
-                _s[i++] = s++;
-                _s[i++] = s++;
-                _s[i++] = s++;
-                _s[i++] = s++;
-                _s[i++] = s++;
-                _s[i++] = s++;
-                _s[i++] = s++;
-                _s[i++] = s++;
-                _s[i++] = s++;
-                _s[i++] = s++;
-                _s[i++] = s++;
-                _s[i++] = s++;
-                _s[i++] = s++;
-                _s[i++] = s++;
-                _s[i++] = s++;
-                _s[i] = s;
+            public XorShift1024RandomState(int seed)
+            {
+                S = new ulong[16];
+
+                unchecked
+                {
+                    var s = (ulong) seed;
+
+                    if (s == 0)
+                        s = 0x85cc55cc5c5c5c5eUL;
+
+                    var i = 0;
+                    S[i++] = s++;
+                    S[i++] = s++;
+                    S[i++] = s++;
+                    S[i++] = s++;
+                    S[i++] = s++;
+                    S[i++] = s++;
+                    S[i++] = s++;
+                    S[i++] = s++;
+                    S[i++] = s++;
+                    S[i++] = s++;
+                    S[i++] = s++;
+                    S[i++] = s++;
+                    S[i++] = s++;
+                    S[i++] = s++;
+                    S[i++] = s++;
+                    S[i] = s;
+                }
             }
         }
 
         [SuppressMessage("Microsoft.Contracts", "TestAlwaysEvaluatingToAConstant")]
         [ExcludeFromCodeCoverage]
         // only because in release mode coverage doesn't recognise the switch statement. Once https://youtrack.jetbrains.com/issue/TW-44821 is fixed we should be able to re-enable coverage for this method.
-        public void Fill(ArraySegment<byte> toFill)
+        void IRandom.Fill(ArraySegment<byte> toFill)
         {
             var count = toFill.Count;
             var offset = toFill.Offset;
+            var state = _state ?? ThreadSpecificRandomState;
+
             ulong r = 0;
             fixed (byte* ap = toFill.Array)
             {
@@ -67,7 +92,7 @@ namespace Es.Fw
 
                 while (count >= 8)
                 {
-                    r = Ulong();
+                    r = Ulong(state);
                     ap[offset] = rp[0];
                     ap[offset + 1] = rp[1];
                     ap[offset + 2] = rp[2];
@@ -83,7 +108,7 @@ namespace Es.Fw
                 if (count == 0)
                     return;
 
-                r = Ulong();
+                r = Ulong(state);
 
                 // ReSharper disable once SwitchStatementMissingSomeCases
                 switch (count)
@@ -113,20 +138,37 @@ namespace Es.Fw
             }
         }
 
-        [SuppressMessage("Microsoft.Contracts", "TestAlwaysEvaluatingToAConstant")]
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ulong Ulong()
+        ulong IRandom.Ulong()
+        {
+            var state = _state ?? ThreadSpecificRandomState;
+            unchecked
+            {
+                fixed (ulong* sp = state.S)
+                {
+                    var s0 = sp[state.P];
+                    state.P = (state.P + 1) & 15;
+                    var s1 = sp[state.P];
+                    s1 ^= s1 << 31;
+                    sp[state.P] = s1 ^ s0 ^ (s1 >> 11) ^ (s0 >> 30);
+                    return sp[state.P] * 1181783497276652981UL;
+                }
+            }
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static ulong Ulong(XorShift1024RandomState state)
         {
             unchecked
             {
-                fixed (ulong* sp = _s)
+                fixed (ulong* sp = state.S)
                 {
-                    var s0 = sp[_p];
-                    _p = (_p + 1) & 15;
-                    var s1 = sp[_p];
+                    var s0 = sp[state.P];
+                    state.P = (state.P + 1) & 15;
+                    var s1 = sp[state.P];
                     s1 ^= s1 << 31;
-                    sp[_p] = s1 ^ s0 ^ (s1 >> 11) ^ (s0 >> 30);
-                    return sp[_p]*1181783497276652981UL;
+                    sp[state.P] = s1 ^ s0 ^ (s1 >> 11) ^ (s0 >> 30);
+                    return sp[state.P] * 1181783497276652981UL;
                 }
             }
         }

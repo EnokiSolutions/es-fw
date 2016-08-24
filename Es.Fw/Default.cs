@@ -1,3 +1,4 @@
+using System.Runtime.Serialization;
 using Es.FwI;
 
 namespace Es.Fw
@@ -16,6 +17,8 @@ namespace Es.Fw
         internal static readonly IRandomFactory XorShift1024RandomFactory;
         internal static readonly IRandomWithSeedFactory XorShift1024RandomWithSeedFactory;
 
+        public static readonly IIdGenerator IdGenerator;
+
         public static IEncrypt CreateEncrypt(byte[] key, IRandom random) { return new Blowfish(key, random); }
         public static IDecrypt CreateDecrypt(byte[] key) { return new Blowfish(key); }
 
@@ -30,6 +33,8 @@ namespace Es.Fw
             XorShift1024RandomWithSeedFactory = xorShift1024RandomFactory;
             RandomWithSeedFactory = xorShift1024RandomFactory;
             RandomFactory = xorShift1024RandomFactory;
+
+            IdGenerator = new IdGenerator(XorShift1024RandomFactory.Create());
 
             SnappyCompressor = new SnappyCompressor();
             SnappyDecompressor = new SnappyDecompressor();
